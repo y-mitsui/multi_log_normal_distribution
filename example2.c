@@ -6,11 +6,6 @@
 #include <gsl/gsl_blas.h>
 #include <libstandard.h>
 
-gsl_matrix *gsl_matrix_clone(gsl_matrix *src){
-	gsl_matrix *r=gsl_matrix_alloc(src->size1,src->size2);
-	gsl_matrix_memcpy(r,src);
-	return r;
-}
 gsl_matrix *gsl_inverse(gsl_matrix *m){
 	int s=0;
 	gsl_permutation * p = gsl_permutation_alloc (m->size1);
@@ -27,17 +22,21 @@ double m_log_normal_distribution(gsl_vector *data,gsl_vector *u,gsl_matrix *sigm
 	gsl_matrix *mdata=gsl_matrix_alloc(1,data->size);
 	gsl_matrix_set_row(mdata,1,data);
 	gsl_matrix *tmp=gsl_matrix_alloc(sigma->size1,u->size);
+	gsl_matrix *tmp2=gsl_matrix_alloc(sigma->size1,u->size);
+	gsl_matrix *tmp3=gsl_matrix_alloc(sigma->size1,u->size);
 	gsl_blas_dgemm (CblasNoTrans, CblasNoTrans,1.0, sigma, mdata,0.0, tmp);
 	gsl_matrix_mul_constant(tmp,sqrt(2*M_PI));
 	for(i=0;i<data->size;i++){
 		gsl_vector_set(data,i,1/2*pow(log(gsl_vector_get(data,i))-gsl_vector_get(u,i),2));
 	}
-	gsl_blas_dgemm (CblasNoTrans, CblasNoTrans,1.0,mdata, gsl_inverse(sigma), 0.0, tmp);
+	gsl_blas_dgemm (CblasNoTrans, CblasNoTrans,1.0,mdata, gsl_inverse(sigma), 0.0, tmp2);
 	for(i=0;i<tmp->size1;i++){
 		for(j=0;j<tmp->size1;j++){
-			gsl_matrix_set(tmp,i,j,exp(-gsl_matrix_get(tmp,i,j)));
+			gsl_matrix_set(tmp2,i,j,exp(-gsl_matrix_get(tmp2,i,j)));
 		}
 	}
+	gsl_blas_dgemm (CblasNoTrans, CblasNoTrans,1.0,tmp, tmp2, 0.0, tmp3);
+	return gsl_matrix_get(tmp3,0,0);
 	
 }
 double log_normal_distribution(double x,double u,double sigma){
